@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ESP32 BLE Environment Logger</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f7fa;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+    h1 {
+      color: #333;
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin: 20px 0;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    .card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      padding: 20px;
+      width: 300px;
+      text-align: center;
+    }
+    .data {
+      font-size: 22px;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>ESP32 BLE Environment Logger</h1>
+  <button onclick="connectBLE()">🔗 Connect to ESP32</button>
+
+  <div class="card">
+    <div class="data">🌡️ Temperature: <span id="temp">--</span> °C</div>
+    <div class="data">💧 Humidity: <span id="hum">--</span> %</div>
+    <div class="data">☣️ Ammonia: <span id="gas">--</span> ppm</div>
+  </div>
+
+  <script>
+    const SERVICE_UUID = "12345678-1234-1234-1234-1234567890ab"; 
+    const CHARACTERISTIC_UUID = "87654321-4321-4321-4321-abcdefabcdef";
+
+    async function connectBLE() {
+      try {
+        const device = await navigator.bluetooth.requestDevice({
+          filters: [{ name: "ESP32_Logger" }],
+          optionalServices: [SERVICE_UUID]
+        });
+
+        const server = await device.gatt.connect();
+        const service = await server.getPrimaryService(SERVICE_UUID);
+        const characteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
+
+        await characteristic.startNotifications();
+        characteristic.addEventListener("characteristicvaluechanged", handleData);
+
+        alert("✅ Connected to ESP32 BLE!");
+      } catch (error) {
+        alert("⚠️ " + error);
+      }
+    }
+
+    function handleData(event) {
+      const decoder = new TextDecoder();
+      const value = decoder.decode(event.target.value); 
+      // Expecting data like: 28.5,62.3,2450
+      const parts = value.split(",");
+      if (parts.length === 3) {
+        document.getElementById("temp").textContent = parts[0];
+        document.getElementById("hum").textContent = parts[1];
+        document.getElementById("gas").textContent = parts[2];
+      }
+    }
+  </script>
+</body>
+</html>
